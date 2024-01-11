@@ -52,7 +52,7 @@ loadData()
       :list="state.list"
       v-model:index="state.index"
       :noMore="state.noMore"
-      :virtualCount="3"
+      :virtualCount="5"
       @loadMore="loadData"
     ></SlideList>
   </main>
