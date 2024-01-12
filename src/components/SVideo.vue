@@ -64,10 +64,11 @@ function toggleStatus({ index = 0, status }) {
     } else if (status == PlayStatus.start) {
       videoRef.value.play()
       state.paused = false
-      videoRef.value.currentTime = state.currentTime
+      videoRef.value.currentTime = 0
     } else if (status == PlayStatus.stop) {
       videoRef.value.pause()
       state.paused = true
+      videoRef.value.currentTime = 0
     }
     toggleMuted(mutedStore.getMuted)
   }
@@ -256,14 +257,16 @@ video {
     position: absolute;
     bottom: 0;
     .muted {
-      width: 100%;
-      height: 35px;
+      @h: 35px;
+      height: @h;
+      aspect-ratio: 1;
+      position: absolute;
+      right: 10px;
+      top: -@h;
       .icon {
         background: #fff;
         border-radius: 50%;
         padding: 5px;
-        position: absolute;
-        right: 10px;
       }
     }
     .content {
