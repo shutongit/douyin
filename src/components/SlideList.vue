@@ -138,7 +138,7 @@ function keyup(e) {
 }
 const scrollUp = ref(
   throttle(function () {
-    state.localIndex--
+    state.localIndex > 0 && state.localIndex--
     turnPage()
     slideReset(wrapperRef.value, state, emit)
   }, 500)
@@ -155,7 +155,7 @@ function keydown(e) {
 }
 const scrollDown = ref(
   throttle(function () {
-    state.localIndex++
+    state.localIndex < props.list.length - 1 && state.localIndex++
     turnPage(true)
     slideReset(wrapperRef.value, state, emit)
   }, 500)
@@ -189,8 +189,6 @@ function mouseup(e) {
  * 翻页
  * @param {Boolean} isNext 是否下一页
  */
-// TODO: feat 数据源设置为3个 ， 渲染dom设置为5个，向下翻页会出现空视图
-// TODO: fix 加载下一页的时候会出现跳过下标的情况
 function turnPage(isNext) {
   // 切换页面
   const half = Math.floor(props.virtualCount / 2)
@@ -198,11 +196,7 @@ function turnPage(isNext) {
   if (props.list.length > props.virtualCount) {
     // 数据源数量大于要渲染的dom数量
     if (isNext) {
-      // 下一页
-      // 可以进行页面切换
       if (state.localIndex > props.list.length - props.virtualCount && state.localIndex >= half) {
-        // 当前下标大于数据源和渲染dom数量的差 并且 当前下标大于渲染dom数量的一半
-        // TODO: 加载更多
         if (props.noMore) {
           console.log('暂无更多数据')
         } else {
@@ -210,7 +204,7 @@ function turnPage(isNext) {
         }
       }
 
-      const addItemIndex = state.localIndex + 2
+      const addItemIndex = Math.min(state.localIndex + half, props.list.length - 1)
       const res = $(wrapperRef.value).find(`.${itemClassName}[data-index=${addItemIndex}]`)
       if (
         state.wrapper.childrenLength < props.virtualCount &&
@@ -226,12 +220,12 @@ function turnPage(isNext) {
       if (
         state.wrapper.childrenLength === props.virtualCount &&
         state.localIndex >= half &&
-        state.localIndex <= props.list.length - 3
+        state.localIndex <= props.list.length - 1 &&
+        addItemIndex < props.list.length
       ) {
         // 如果子视图数量等于要渲染的dom数量 并且 当前下标大于渲染dom数量的一半 并且 当前下标小于等于数据源数量-3
         // 添加新视图，移除旧视图
         if (res.length === 0) {
-          console.log('翻页到下面的时候 要添加新的页面 移除最前面的视图')
           wrapperRef.value.appendChild(getInsEl(props.list[addItemIndex], addItemIndex))
           // 移除最前面的视图
 
@@ -240,7 +234,7 @@ function turnPage(isNext) {
           $(wrapperRef.value)
             .find(`.${itemClassName}`)
             .each(function (_, v) {
-              $(v).css('top', (state.localIndex - 2) * state.wrapper.height)
+              $(v).css('top', (state.localIndex - half) * state.wrapper.height)
             })
         }
       }
@@ -249,26 +243,26 @@ function turnPage(isNext) {
           .find(`.${itemClassName}`)
           .each((_, v) => {
             const index = $(v).data('index')
-            if (index < state.localIndex - 2) {
+            if (index < state.localIndex - half) {
               appInsMap.get(index)?.remove()
             }
-            $(v).css('top', (state.localIndex - 2) * state.wrapper.height)
+            $(v).css('top', (state.localIndex - half) * state.wrapper.height)
           })
       }
     } else {
       // 上一页
-      const addItemIndex = state.localIndex - 2
+      const addItemIndex = Math.max(state.localIndex - half, 0)
       const res = $(wrapperRef.value).find(`.${itemClassName}[data-index=${addItemIndex}]`)
-      if (state.localIndex > 1 && state.localIndex <= props.list.length - 4) {
+      if (state.localIndex > 0 && state.localIndex <= props.list.length - 1) {
         if (res.length === 0) {
           wrapperRef.value.prepend(getInsEl(props.list[addItemIndex], addItemIndex))
 
-          appInsMap.get($(wrapperRef.value).find(`.${itemClassName}:last`).data('index'))?.remove
+          appInsMap.get($(wrapperRef.value).find(`.${itemClassName}:last`).data('index'))?.remove()
 
           $(wrapperRef.value)
             .find(`.${itemClassName}`)
             .each((_, v) => {
-              $(v).css('top', (state.localIndex - 2) * state.wrapper.height)
+              $(v).css('top', (state.localIndex - half) * state.wrapper.height)
             })
         }
       }
@@ -340,10 +334,16 @@ function getInsEl(item, index, play = false) {
  * @param {Boolean} isNext
  */
 function canNext(isNext) {
-  return !(
-    (state.localIndex === 0 && !isNext) ||
-    (state.localIndex === props.list.length - 1 && isNext)
-  )
+  if (isNext) {
+    return state.localIndex >= 0 && state.localIndex < props.list.length - 1
+  } else {
+    return state.localIndex > 0
+  }
+
+  // return !(
+  //   (state.localIndex === 0 && !isNext) ||
+  //   (state.localIndex === props.list.length - 1 && isNext)
+  // )
 }
 onMounted(() => {
   slideInit(wrapperRef.value, state)
@@ -381,8 +381,8 @@ function removeListenerKeyupOrDown() {
       @mouseup="mouseup"
     >
       <slot> </slot>
-      <!-- <div class="no-data" v-if="props.list.length == 0">暂无数据</div> -->
     </div>
+    <div class="no-data" v-if="props.list.length == 0">暂无数据</div>
   </div>
 </template>
 
@@ -409,5 +409,10 @@ function removeListenerKeyupOrDown() {
   display: flex;
   justify-content: center;
   align-items: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-weight: 600;
+  font-size: 16px;
 }
 </style>

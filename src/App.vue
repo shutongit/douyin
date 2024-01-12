@@ -10,7 +10,8 @@ const state = reactive({
     size: 10,
     current: 1
   },
-  noMore: false // 暂无更多数据
+  noMore: false, // 暂无更多数据
+  loading: false // 是否正在请求数据
 })
 
 /**
@@ -18,32 +19,51 @@ const state = reactive({
  * @param {Boolean} more 是否是加载更多数据
  */
 function loadData(more) {
-  if (more) {
-    state.page.current++
-  } else {
-    state.page.current = 1
-  }
-  console.log('state.page.current1: ', state.page.current)
-
-  setTimeout(() => {
-    if (state.page.current == 2) {
-      console.log('state.page.current2: ', state.page.current)
-      state.noMore = true
+  if (!state.loading) {
+    if (more) {
+      state.page.current++
+    } else {
+      state.page.current = 1
     }
-    const arr = new Array(state.page.size).fill(
-      {
-        type: 'video',
-        src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2023/b4838bab6345fa0a3ae66284128b2a7c.mp4',
-        id: state.page.current
-      },
-      0,
-      state.page.size
-    )
-    state.list.push(...arr)
-  }, 1e3)
+    state.loading = true
+    setTimeout(() => {
+      if (state.page.current == 2) {
+        state.noMore = true
+      }
+      const arr = videoData()
+      state.list.push(...arr)
+      state.loading = false
+    }, 1e3)
+  }
 }
 
 loadData()
+
+/** 视频数据 */
+function videoData() {
+  return [
+    {
+      id: 1,
+      type: 'video',
+      src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2024/cfadd07bfe235a6384b7513b338a9325.mp4'
+    },
+    {
+      id: 2,
+      type: 'video',
+      src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2024/c022ef8e2a6d164363d2d86e132b5852.mp4'
+    },
+    {
+      id: 3,
+      type: 'video',
+      src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2024/91f8f19a5b26253335aaac04803294b2.mp4'
+    },
+    {
+      id: 4,
+      type: 'video',
+      src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2023/b4838bab6345fa0a3ae66284128b2a7c.mp4'
+    }
+  ]
+}
 </script>
 
 <template>
