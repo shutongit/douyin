@@ -15,6 +15,7 @@ import {
 import { throttle } from 'loadsh'
 import bus, { EVENT_KEY } from '@/utils/bus'
 import SlideItem from '@/components/SlideItem.vue'
+import CancelFullIcon from '@/components/icon/cance-full-icon.vue'
 
 const props = defineProps({
   index: {
@@ -345,13 +346,26 @@ function canNext(isNext) {
   //   (state.localIndex === props.list.length - 1 && isNext)
   // )
 }
+/** 取消全屏
+ * @param {Boolean} val 是否全屏
+ */
+function handleFull(val) {
+  console.log('val: ', val)
+  const fv = document.getElementById('full-view')
+  fv.style.zIndex = val ? 10 : 1
+  // bus.emit(EVENT_KEY.cancelFullAction)
+}
 onMounted(() => {
   slideInit(wrapperRef.value, state)
   insertContent()
   listenerKeyupOrDown()
+  bus.on(EVENT_KEY.fullAction, handleFull)
+  bus.on(EVENT_KEY.cancelFullAction, handleFull)
 })
 onUnmounted(() => {
   removeListenerKeyupOrDown()
+  bus.off(EVENT_KEY.fullAction, handleFull)
+  bus.off(EVENT_KEY.cancelFullAction, handleFull)
 })
 /**
  * 添加页面监听上下键
@@ -371,6 +385,12 @@ function removeListenerKeyupOrDown() {
 
 <template>
   <div class="slide slide-infinite">
+    <div id="full-view" class="full-view">
+      <!-- <div class="cancel-full" @click="handleCancelFull">
+        <CancelFullIcon></CancelFullIcon>
+      </div> -->
+    </div>
+
     <div
       class="slide-list flex-direction-column"
       ref="wrapperRef"
@@ -386,7 +406,7 @@ function removeListenerKeyupOrDown() {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="less">
 .slide-infinite {
   height: 100%;
   width: 100%;
@@ -400,6 +420,7 @@ function removeListenerKeyupOrDown() {
   display: flex;
   flex-direction: column;
   position: relative;
+  z-index: 2;
 }
 .no-data {
   color: #fff;
@@ -414,5 +435,28 @@ function removeListenerKeyupOrDown() {
   left: 0;
   font-weight: 600;
   font-size: 16px;
+}
+.full-view {
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+  video {
+    z-index: 1;
+  }
+  // .cancel-full {
+  //   position: absolute;
+  //   width: 25px;
+  //   aspect-ratio: 1;
+  //   left: 10px;
+  //   bottom: 10px;
+  //   z-index: 2;
+  // }
 }
 </style>

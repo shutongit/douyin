@@ -3,7 +3,9 @@ import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
 import playWhite from '@/assets/play-white.png'
 import pauseWhite from '@/assets/pause-white.png'
 import mutedIcon from '@/components/icon/muted-icon.vue'
-// import fullIcon from '@/components/icon/full-icon.vue'
+import fullIcon from '@/components/icon/full-icon.vue'
+import CancelFullIcon from '@/components/icon/cance-full-icon.vue'
+
 import ProgressBar from './ProgressBar.vue'
 import { PlayStatus, stopPropagation } from '@/components/common'
 import bus, { EVENT_KEY } from '@/utils/bus'
@@ -34,11 +36,14 @@ const state = reactive({
   duration: 0, // 视频时长
   move: false, // 是否在移动进度条
   playX: 0, // 当前进度条的位置
-  currentTime: 0 // 当前播放的时间
+  currentTime: 0, // 当前播放的时间
+  inline: true // 是否全屏
 })
 
 /**视频播放器 */
 const videoRef = ref(null)
+/** 遮罩视图 */
+const maskRef = ref(null)
 // 播放进度视图
 const progressRef = ref(null)
 
@@ -129,9 +134,41 @@ function handleProgressEnd() {
   toggleStatus({ index: props.index, status: PlayStatus.start })
 }
 /** 全屏 */
-function handleFull() {
-  console.log('全屏')
+function handleFull(val) {
+  state.inline = !val
+
+  // 视频视图
+  const width = videoRef.value.offsetWidth
+  const height = videoRef.value.offsetHeight
+  videoRef.value.style.width = height + 'px'
+  videoRef.value.style.height = width + 'px'
+
+  // 遮罩视图
+  const mw = maskRef.value.offsetWidth
+  const mh = maskRef.value.offsetHeight
+  maskRef.value.style.width = mh + 'px'
+  maskRef.value.style.height = mw + 'px'
+
+  const top = (mw - mh) / 2
+  const right = (mh - mw) / 2
+  maskRef.value.style.top = top + 'px'
+  maskRef.value.style.right = right + 'px'
+
+  console.log('right: ', right)
+  console.log('top: ', top)
+
+  if (val) {
+    bus.emit(EVENT_KEY.fullAction, true)
+  } else {
+    bus.emit(EVENT_KEY.cancelFullAction, false)
+  }
 }
+
+/** 全屏视图的id */
+const fullClass = computed(() => {
+  const str = state.inline ? '' : 'rotate'
+  return str
+})
 /** 视频资源准备完毕 */
 function videoLoaded() {
   const video = videoRef.value
@@ -145,67 +182,93 @@ function videoLoaded() {
     state.playX = (state.currentTime - 1) * state.step
   })
 }
+/**  切换静音模式 */
+function mutedAction(res) {
+  state.muted = res
+}
 onMounted(() => {
   videoRef.value && videoRef.value.addEventListener('loadedmetadata', videoLoaded)
   // 响应播放变化
   bus.on(EVENT_KEY.click, toggleStatus)
-  bus.on(EVENT_KEY.muted, (res) => {
-    state.muted = res
-  })
+  bus.on(EVENT_KEY.muted, mutedAction)
+  // bus.on(EVENT_KEY.cancelFullAction, handleFull)
 })
 onUnmounted(() => {
   videoRef.value && videoRef.value.removeEventListener('loadedmetadata', videoLoaded)
+  // bus.off(EVENT_KEY.cancelFullAction, handleFull)
+  bus.off(EVENT_KEY.click, toggleStatus)
+  bus.off(EVENT_KEY.muted, mutedAction)
 })
 </script>
 
 <template>
   <div class="video-wrapper" :class="positionName" :page="item.id">
-    <video
-      ref="videoRef"
-      :src="item.src"
-      :autoplay="props.isPlay"
-      preload="true"
-      webkit-playsinline=""
-      playsinline=""
-      x-webkit-airplay=""
-      x5-playsinline=""
-      loop
-      muted
-    >
-      <p>您的浏览器不支持 video 标签。</p>
-    </video>
-    <div class="mask" @click.stop="handleClick(props.position.index, PlayStatus.toggle)">
-      <div class="status-img">
-        <img v-if="state.paused" :src="playWhite" class="play" />
-        <img v-else :src="pauseWhite" class="pause" />
-      </div>
-      <div class="tool" :class="progressClassFunc">
-        <div v-if="mutedStore.getMuted" class="muted" @click.stop="handleMuted">
-          <mutedIcon class="icon"></mutedIcon>
+    <teleport to="#full-view" :disabled="state.inline">
+      <video
+        ref="videoRef"
+        :class="fullClass"
+        :src="item.src"
+        :autoplay="props.isPlay"
+        preload="true"
+        webkit-playsinline=""
+        playsinline=""
+        x-webkit-airplay=""
+        x5-playsinline=""
+        loop
+        muted
+      >
+        <p>您的浏览器不支持 video 标签。</p>
+      </video>
+
+      <div
+        class="mask"
+        ref="maskRef"
+        :class="fullClass"
+        @click="handleClick(props.position.index, PlayStatus.toggle)"
+      >
+        <div class="status-img">
+          <img v-if="state.paused" :src="playWhite" class="play" />
+          <img v-else :src="pauseWhite" class="pause" />
         </div>
-        <div class="content">
-          <div class="title">标题</div>
-          <div class="des">详情</div>
+        <div class="tool" :class="progressClassFunc">
+          <div v-if="mutedStore.getMuted" class="muted" @click.stop="handleMuted">
+            <mutedIcon class="icon"></mutedIcon>
+          </div>
+          <div class="content" v-if="state.inline">
+            <div class="title">标题</div>
+            <div class="des">详情</div>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <ProgressBar
+            ref="progressRef"
+            :index="props.position.index"
+            :step="state.step"
+            :duration="state.duration"
+            :current-time="state.currentTime"
+            :play-x="state.playX"
+            :move="state.move"
+            @start="handleProgressStart"
+            @move="handleProgressMove"
+            @end="handleProgressEnd"
+          ></ProgressBar>
+          <div
+            v-if="!state.move && state.inline"
+            class="full"
+            @click.stop.prevent="handleFull(true)"
+          >
+            <fullIcon></fullIcon>
+          </div>
+          <div
+            v-if="!state.inline && !state.move"
+            class="cancel-full"
+            @click.stop.prevent="handleFull(false)"
+          >
+            <CancelFullIcon></CancelFullIcon>
+          </div>
         </div>
       </div>
-      <div class="progress-bar">
-        <ProgressBar
-          ref="progressRef"
-          :index="props.position.index"
-          :step="state.step"
-          :duration="state.duration"
-          :current-time="state.currentTime"
-          :play-x="state.playX"
-          :move="state.move"
-          @start="handleProgressStart"
-          @move="handleProgressMove"
-          @end="handleProgressEnd"
-        ></ProgressBar>
-        <!-- <div v-if="!state.move" class="full" @click.stop="handleFull">
-          <fullIcon></fullIcon>
-        </div> -->
-      </div>
-    </div>
+    </teleport>
   </div>
 </template>
 
@@ -226,7 +289,13 @@ video {
   position: relative;
   z-index: 1;
 }
+video.rotate {
+  transform: rotate(90deg);
+}
 // 视频上面的遮罩
+.mask.rotate {
+  transform: rotate(90deg);
+}
 .mask {
   width: 100%;
   height: 100%;
@@ -256,6 +325,7 @@ video {
     width: 100%;
     position: absolute;
     bottom: 0;
+
     .muted {
       @h: 35px;
       height: @h;
@@ -263,6 +333,7 @@ video {
       position: absolute;
       right: 10px;
       top: -@h;
+      z-index: 11;
       .icon {
         background: #fff;
         border-radius: 50%;
@@ -302,19 +373,36 @@ video {
     .progress {
       width: @w;
       left: @gap*2;
+      z-index: 1;
     }
-    // .full {
-    //   position: absolute;
-    //   width: 25px;
-    //   right: @gap;
-    //   svg {
-    //     width: 100%;
-    //     height: 100%;
-    //     color: white;
-    //   }
-    // }
+    .full {
+      position: absolute;
+      width: 25px;
+      right: @gap;
+      z-index: 2;
+
+      svg {
+        width: 100%;
+        height: 100%;
+        color: white;
+      }
+    }
+    .cancel-full {
+      position: absolute;
+      width: 25px;
+      aspect-ratio: 1;
+      left: @gap;
+      bottom: @gap;
+      z-index: 2;
+      svg {
+        width: 100%;
+        height: 100%;
+        color: white;
+      }
+    }
   }
 }
+
 @keyframes pauseAni {
   0% {
     opacity: 1;

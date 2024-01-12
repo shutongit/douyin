@@ -61,6 +61,26 @@ function videoData() {
       id: 4,
       type: 'video',
       src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2023/b4838bab6345fa0a3ae66284128b2a7c.mp4'
+    },
+    {
+      id: 5,
+      type: 'video',
+      src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2023/b4838bab6345fa0a3ae66284128b2a7c.mp4'
+    },
+    {
+      id: 6,
+      type: 'video',
+      src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2024/cfadd07bfe235a6384b7513b338a9325.mp4'
+    },
+    {
+      id: 7,
+      type: 'video',
+      src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2024/c022ef8e2a6d164363d2d86e132b5852.mp4'
+    },
+    {
+      id: 8,
+      type: 'video',
+      src: 'https://shtest.cretechsh.cn/cretech/calc/101010/mp4/2024/91f8f19a5b26253335aaac04803294b2.mp4'
     }
   ]
 }
@@ -72,7 +92,7 @@ function videoData() {
       :list="state.list"
       v-model:index="state.index"
       :noMore="state.noMore"
-      :virtualCount="9"
+      :virtualCount="3"
       @loadMore="loadData"
     ></SlideList>
   </main>
